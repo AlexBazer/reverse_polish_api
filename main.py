@@ -3,10 +3,11 @@ import zmq
 import bottle
 import time
 import signal
+import logging
 from bottle import post, request, response
 
 context = zmq.Context()
-
+logging.basicConfig(filename='reverse_polish.log', level=logging.DEBUG)
 
 @post('/')
 def main():
@@ -15,6 +16,8 @@ def main():
         return response_error('Request should contain expressions list')
 
     expressions = data['expressions']
+
+    # Define timeout to cache NO response from ZMQ server
     define_timeout(1)
 
     try:
@@ -36,22 +39,29 @@ def main():
     return {'status': status, 'results': results}
 
 def connect_to_worker():
+    """Define ZMQ connection and return socket to work with"""
     socket = context.socket(zmq.REQ)
     socket.connect("tcp://localhost:5555")
     return socket
 
 def calculate(expression, socket):
+    """Make request to ZMQ worker for calculation, logs results and times and returns them"""
     start = time.time()
     socket.send(bytes(expression))
     result = socket.recv()
     total_time = (time.time() - start)*1000.0
+    total_time_str = '{0:.3f}'.format(total_time)
+    logging.info('{} = {} in {}ms'.format(expression, result, total_time_str))
+
     return {
         'result': result,
-        'time': '{0:.3f}'.format(total_time)
+        'time': total_time_str
     }
 
 def response_error(msg):
+    """Prepare error response"""
     response.status = 400
+    logging.error(msg)
     return {'status': 'ERROR', 'msg': msg}
 
 class ZMQNotResponding(Exception):
