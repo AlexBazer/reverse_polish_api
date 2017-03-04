@@ -1,15 +1,17 @@
 import json
 import zmq
-import bottle
 import time
 import signal
 import logging
-from bottle import post, request, response
+from bottle import Bottle, run, post, request, response
 
 context = zmq.Context()
 logging.basicConfig(filename='reverse_polish.log', level=logging.DEBUG)
 
-@post('/')
+app = application = Bottle()
+
+
+@app.post('/calculate/')
 def main():
     data = request.json
     if not data or 'expressions' not in data:
@@ -79,4 +81,4 @@ def raise_timeout(*args, **kwargs):
     raise ZMQNotResponding('ZMQ server is not responding')
 
 if __name__ == '__main__':
-    bottle.run(host = '127.0.0.1', port = 8000)
+    run(app=app, host = '127.0.0.1', port = 8000)
